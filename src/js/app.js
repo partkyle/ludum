@@ -44,14 +44,12 @@ class Entity {
 
     this.position = {x:0, y:0};
 
-    this.input = options.input;
-
     // this.sprite.position = options.position || {x: 0, y: 0}
 
     this.speed = 3000;
     this.drag = 5;
     this.velocity = {x: 0, y: 0};
-    this.accel = {x:0, y:0};
+    this.accel = {x: 0, y: 0};
 
     this.attack = false;
 
@@ -113,7 +111,7 @@ class Entity {
 
 class ControlledEntity extends Entity {
   constructor(options) {
-    super().constructor(options);
+    super(options);
     this.input = options.input;
   }
 
@@ -132,9 +130,14 @@ class ControlledEntity extends Entity {
     }
     if (this.input.isKeyDown("SPACE")) {
       this.attack = true;
+    } else {
+      this.attack = false;
     }
 
-    super.update();
+    super.update(dt);
+
+    this.accel.x = 0;
+    this.accel.y = 0;
   }
 }
 
@@ -184,64 +187,10 @@ let game = new Game();
 let input = new Input();
 input.addListeners();
 
-let boxman = new Entity({sprite: 'boxman', input: input});
+let boxman = new ControlledEntity({sprite: 'boxman', input: input});
+console.log(boxman);
+console.log(boxman.sprite);
 game.addEntity(boxman);
-
-let keyConfig = {
-  65: "LEFT",
-  37: "LEFT",
-  83: "DOWN",
-  40: "DOWN",
-  68: "RIGHT",
-  39: "RIGHT",
-  87: "UP",
-  38: "UP",
-  // 37: "CAMLEFT",
-  // 39: "CAMRIGHT",
-  32: "SPACE",
-  // 90: "ZOOM",
-  // 70: "FOLLOW",
-};
-
-window.addEventListener('keydown', function(e) {
-  let key = keyConfig[e.keyCode];
-
-  if (key == "UP") {
-    boxman.accel.y = -1;
-  }
-  if (key == "DOWN") {
-    boxman.accel.y = 1;
-  }
-  if (key == "LEFT") {
-    boxman.accel.x = -1;
-  }
-  if (key == "RIGHT") {
-    boxman.accel.x = 1;
-  }
-  if (key == "SPACE") {
-    boxman.attack = true;
-  }
-});
-
-window.addEventListener('keyup', function(e) {
-  let key = keyConfig[e.keyCode];
-
-  if (key == "UP") {
-    boxman.accel.y = 0;
-  }
-  if (key == "DOWN") {
-    boxman.accel.y = 0;
-  }
-  if (key == "LEFT") {
-    boxman.accel.x = 0;
-  }
-  if (key == "RIGHT") {
-    boxman.accel.x = 0;
-  }
-  if (key == "SPACE") {
-    boxman.attack = false;
-  }
-});
 
 // kick off the animation loop (defined below)
 game.start();

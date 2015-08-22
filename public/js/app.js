@@ -95,8 +95,6 @@ var Entity = (function () {
 
     this.position = { x: 0, y: 0 };
 
-    this.input = options.input;
-
     // this.sprite.position = options.position || {x: 0, y: 0}
 
     this.speed = 3000;
@@ -174,7 +172,7 @@ var ControlledEntity = (function (_Entity) {
   function ControlledEntity(options) {
     _classCallCheck(this, ControlledEntity);
 
-    _get(Object.getPrototypeOf(ControlledEntity.prototype), 'constructor', this).call(this).constructor(options);
+    _get(Object.getPrototypeOf(ControlledEntity.prototype), 'constructor', this).call(this, options);
     this.input = options.input;
   }
 
@@ -195,9 +193,14 @@ var ControlledEntity = (function (_Entity) {
       }
       if (this.input.isKeyDown("SPACE")) {
         this.attack = true;
+      } else {
+        this.attack = false;
       }
 
-      _get(Object.getPrototypeOf(ControlledEntity.prototype), 'update', this).call(this);
+      _get(Object.getPrototypeOf(ControlledEntity.prototype), 'update', this).call(this, dt);
+
+      this.accel.x = 0;
+      this.accel.y = 0;
     }
   }]);
 
@@ -262,64 +265,10 @@ var game = new Game();
 var input = new Input();
 input.addListeners();
 
-var boxman = new Entity({ sprite: 'boxman', input: input });
+var boxman = new ControlledEntity({ sprite: 'boxman', input: input });
+console.log(boxman);
+console.log(boxman.sprite);
 game.addEntity(boxman);
-
-var keyConfig = {
-  65: "LEFT",
-  37: "LEFT",
-  83: "DOWN",
-  40: "DOWN",
-  68: "RIGHT",
-  39: "RIGHT",
-  87: "UP",
-  38: "UP",
-  // 37: "CAMLEFT",
-  // 39: "CAMRIGHT",
-  32: "SPACE"
-};
-
-// 90: "ZOOM",
-// 70: "FOLLOW",
-window.addEventListener('keydown', function (e) {
-  var key = keyConfig[e.keyCode];
-
-  if (key == "UP") {
-    boxman.accel.y = -1;
-  }
-  if (key == "DOWN") {
-    boxman.accel.y = 1;
-  }
-  if (key == "LEFT") {
-    boxman.accel.x = -1;
-  }
-  if (key == "RIGHT") {
-    boxman.accel.x = 1;
-  }
-  if (key == "SPACE") {
-    boxman.attack = true;
-  }
-});
-
-window.addEventListener('keyup', function (e) {
-  var key = keyConfig[e.keyCode];
-
-  if (key == "UP") {
-    boxman.accel.y = 0;
-  }
-  if (key == "DOWN") {
-    boxman.accel.y = 0;
-  }
-  if (key == "LEFT") {
-    boxman.accel.x = 0;
-  }
-  if (key == "RIGHT") {
-    boxman.accel.x = 0;
-  }
-  if (key == "SPACE") {
-    boxman.attack = false;
-  }
-});
 
 // kick off the animation loop (defined below)
 game.start();
