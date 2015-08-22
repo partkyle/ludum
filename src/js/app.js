@@ -14,33 +14,41 @@ class Game {
     this.stage.addChild(entity.sprite);
   }
 
-  updateAndRender() {
-    // start the timer for the next animation loop
-    requestAnimationFrame(() => this.updateAndRender());
-
+  update() {
     let dt = ((new Date()) - this.now) / 1000.0;
 
     for (let entity of this.entities) {
       entity.update(dt);
     }
 
-    // this is the main render call that makes pixi draw your container and its children.
-    renderer.render(this.stage);
-
     this.now = new Date();
+
+    setTimeout(() => this.update(), 10);
+  }
+
+  render() {
+    requestAnimationFrame(() => this.render());
+    renderer.render(this.stage);
+  }
+
+  start() {
+    this.update();
+    this.render();
   }
 }
 
 class Entity {
   constructor(options) {
-    let texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
-    this.sprite = new PIXI.Sprite(texture);
+    this.texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
+    this.sprite = new PIXI.Sprite(this.texture);
+
+    this.position = {x:0, y:0};
 
     this.input = options.input;
 
     // this.sprite.position = options.position || {x: 0, y: 0}
 
-    this.speed = 1500;
+    this.speed = 3000;
     this.drag = 5;
     this.velocity = {x: 0, y: 0};
     this.accel = {x:0, y:0};
@@ -48,30 +56,23 @@ class Entity {
     this.attack = false;
 
     this.max_scale = 20;
+    this.min_scale = 4;
+    this.scale = this.min_scale;
+
+    this.size();
 
     this.accel_calc = {};
     this.drag_calc = {};
     this.delta_calc = {};
   }
 
+  size() {
+    this.size.width = 16 * this.scale;
+    this.size.height = 13 * this.scale;
+    return this.size;
+  }
+
   update(dt) {
-
-    if (this.input.isKeyDown("UP")) {
-      this.accel.y = -1;
-    }
-    if (this.input.isKeyDown("DOWN")) {
-      this.accel.y = 1;
-    }
-    if (this.input.isKeyDown("LEFT")) {
-      this.accel.x = -1;
-    }
-    if (this.input.isKeyDown("RIGHT")) {
-      this.accel.x = 1;
-    }
-    if (this.input.isKeyDown("SPACE")) {
-      this.attack = true;
-    }
-
     let accel = this.accel_calc;
     accel.x = this.accel.x * this.speed;
     accel.y = this.accel.y * this.speed;
@@ -88,19 +89,52 @@ class Entity {
     delta.x = (.5 * accel.x * dt * dt) + (this.velocity.x * dt)
     delta.y = (.5 * accel.y * dt * dt) + (this.velocity.y * dt)
 
-    this.sprite.position.x = Math.round(this.sprite.position.x + delta.x);
-    this.sprite.position.y = Math.round(this.sprite.position.y + delta.y);
+    this.position.x = Math.round(this.position.x + delta.x);
+    this.position.y = Math.round(this.position.y + delta.y);
 
     this.velocity.x = Math.round(this.velocity.x + accel.x*dt);
     this.velocity.y = Math.round(this.velocity.y + accel.y*dt);
 
     if (this.attack) {
-      this.sprite.scale.x = this.max_scale;
-      this.sprite.scale.y = this.max_scale;
+      this.scale = this.max_scale;
     } else {
-      this.sprite.scale.x = 1;
-      this.sprite.scale.y = 1;
+      this.scale = this.min_scale;
     }
+
+    this.sprite.scale.x = this.scale;
+    this.sprite.scale.y = this.scale;
+
+    let size = this.size();
+
+    this.sprite.position.x = this.position.x - size.width / 2;
+    this.sprite.position.y = this.position.y - size.height / 2;
+  }
+}
+
+class ControlledEntity extends Entity {
+  constructor(options) {
+    super().constructor(options);
+    this.input = options.input;
+  }
+
+  update(dt) {
+    if (this.input.isKeyDown("UP")) {
+      this.accel.y = -1;
+    }
+    if (this.input.isKeyDown("DOWN")) {
+      this.accel.y = 1;
+    }
+    if (this.input.isKeyDown("LEFT")) {
+      this.accel.x = -1;
+    }
+    if (this.input.isKeyDown("RIGHT")) {
+      this.accel.x = 1;
+    }
+    if (this.input.isKeyDown("SPACE")) {
+      this.attack = true;
+    }
+
+    super.update();
   }
 }
 
@@ -210,5 +244,5 @@ window.addEventListener('keyup', function(e) {
 });
 
 // kick off the animation loop (defined below)
-game.updateAndRender();
+game.start();
 
