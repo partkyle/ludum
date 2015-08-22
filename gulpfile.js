@@ -5,7 +5,7 @@ var concat = require('gulp-concat');
 var minifyHTML = require('gulp-minify-html');
 var connect = require('gulp-connect');
 
-var output = 'dist';
+var output = 'public';
 
 gulp.task('js', function () {
     return gulp.src('src/**/*.js')
