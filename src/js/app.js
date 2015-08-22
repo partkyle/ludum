@@ -1,12 +1,19 @@
 // You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
 // which will try to choose the best renderer for the environment you are in.
-let renderer = new PIXI.autoDetectRenderer(800, 600, {backgroundColor : 0x10ffffff});
 
 class Game {
   constructor(input) {
     this.entities = [];
     this.stage = new PIXI.Container();
     this.now = new Date();
+
+    this.width = 800;
+    this.height = 600;
+  
+    this.renderer = new PIXI.autoDetectRenderer(this.width, this.height, {backgroundColor : 0x10ffffff});
+
+    // The renderer will create a canvas element for you that you can then insert into the DOM.
+    document.body.appendChild(this.renderer.view);
   }
 
   addEntity(entity) {
@@ -28,7 +35,7 @@ class Game {
 
   render() {
     requestAnimationFrame(() => this.render());
-    renderer.render(this.stage);
+    this.renderer.render(this.stage);
   }
 
   start() {
@@ -42,7 +49,6 @@ class Entity {
     this.texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
     this.sprite = new PIXI.Sprite(this.texture);
 
-    this.position = {x:0, y:0};
 
     // this.sprite.position = options.position || {x: 0, y: 0}
 
@@ -53,11 +59,14 @@ class Entity {
 
     this.attack = false;
 
-    this.max_scale = 20;
-    this.min_scale = 4;
+    this.max_scale = 5;
+    this.min_scale = 1;
     this.scale = this.min_scale;
 
-    this.size();
+    let size = this.size();
+
+    this.position = {x: size.width/2, y: size.height/2};
+
 
     this.accel_calc = {};
     this.drag_calc = {};
@@ -65,8 +74,8 @@ class Entity {
   }
 
   size() {
-    this.size.width = 16 * this.scale;
-    this.size.height = 13 * this.scale;
+    this.size.width = 64 * this.scale;
+    this.size.height = 52 * this.scale;
     return this.size;
   }
 
@@ -180,17 +189,21 @@ class Input {
   }
 }
 
-// The renderer will create a canvas element for you that you can then insert into the DOM.
-document.body.appendChild(renderer.view);
-
 let game = new Game();
 let input = new Input();
 input.addListeners();
 
-let boxman = new ControlledEntity({sprite: 'boxman', input: input});
+let boxman = new ControlledEntity({sprite: 'boxman2', input: input});
 console.log(boxman);
 console.log(boxman.sprite);
 game.addEntity(boxman);
+
+for (let i = 0; i < 5; i++) {
+  let enemy = new Entity({'sprite': 'boxman2'});
+  enemy.position.x = Math.floor(Math.random() * game.width);
+  enemy.position.y = Math.floor(Math.random() * game.height);
+  game.addEntity(enemy);
+}
 
 // kick off the animation loop (defined below)
 game.start();

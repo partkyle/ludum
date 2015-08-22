@@ -1,5 +1,6 @@
 // You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
 // which will try to choose the best renderer for the environment you are in.
+
 'use strict';
 
 var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; desc = parent = getter = undefined; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
@@ -10,8 +11,6 @@ function _inherits(subClass, superClass) { if (typeof superClass !== 'function' 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
-var renderer = new PIXI.autoDetectRenderer(800, 600, { backgroundColor: 0x10ffffff });
-
 var Game = (function () {
   function Game(input) {
     _classCallCheck(this, Game);
@@ -19,6 +18,14 @@ var Game = (function () {
     this.entities = [];
     this.stage = new PIXI.Container();
     this.now = new Date();
+
+    this.width = 800;
+    this.height = 600;
+
+    this.renderer = new PIXI.autoDetectRenderer(this.width, this.height, { backgroundColor: 0x10ffffff });
+
+    // The renderer will create a canvas element for you that you can then insert into the DOM.
+    document.body.appendChild(this.renderer.view);
   }
 
   _createClass(Game, [{
@@ -73,7 +80,7 @@ var Game = (function () {
       requestAnimationFrame(function () {
         return _this2.render();
       });
-      renderer.render(this.stage);
+      this.renderer.render(this.stage);
     }
   }, {
     key: 'start',
@@ -93,8 +100,6 @@ var Entity = (function () {
     this.texture = PIXI.Texture.fromImage('assets/' + options.sprite + '.png');
     this.sprite = new PIXI.Sprite(this.texture);
 
-    this.position = { x: 0, y: 0 };
-
     // this.sprite.position = options.position || {x: 0, y: 0}
 
     this.speed = 3000;
@@ -104,11 +109,13 @@ var Entity = (function () {
 
     this.attack = false;
 
-    this.max_scale = 20;
-    this.min_scale = 4;
+    this.max_scale = 5;
+    this.min_scale = 1;
     this.scale = this.min_scale;
 
-    this.size();
+    var size = this.size();
+
+    this.position = { x: size.width / 2, y: size.height / 2 };
 
     this.accel_calc = {};
     this.drag_calc = {};
@@ -118,8 +125,8 @@ var Entity = (function () {
   _createClass(Entity, [{
     key: 'size',
     value: function size() {
-      this.size.width = 16 * this.scale;
-      this.size.height = 13 * this.scale;
+      this.size.width = 64 * this.scale;
+      this.size.height = 52 * this.scale;
       return this.size;
     }
   }, {
@@ -227,8 +234,6 @@ var Input = (function () {
     };
   }
 
-  // The renderer will create a canvas element for you that you can then insert into the DOM.
-
   _createClass(Input, [{
     key: 'getKey',
     // 90: "ZOOM",
@@ -259,16 +264,21 @@ var Input = (function () {
   return Input;
 })();
 
-document.body.appendChild(renderer.view);
-
 var game = new Game();
 var input = new Input();
 input.addListeners();
 
-var boxman = new ControlledEntity({ sprite: 'boxman', input: input });
+var boxman = new ControlledEntity({ sprite: 'boxman2', input: input });
 console.log(boxman);
 console.log(boxman.sprite);
 game.addEntity(boxman);
+
+for (var i = 0; i < 5; i++) {
+  var enemy = new Entity({ 'sprite': 'boxman2' });
+  enemy.position.x = Math.floor(Math.random() * game.width);
+  enemy.position.y = Math.floor(Math.random() * game.height);
+  game.addEntity(enemy);
+}
 
 // kick off the animation loop (defined below)
 game.start();
