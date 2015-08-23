@@ -29,6 +29,10 @@ function tmp() {
   var move_length = Length(delta);
 }
 
+function RectanglesIntersect(A, B) {
+  return !(B.Max.x < A.Min.x || B.Min.x > A.Max.x || B.Max.y < A.Min.y || B.Min.y > A.Max.y || B.Max.z < A.Min.z || B.Min.z > A.Max.z);
+}
+
 var Game = (function () {
   function Game(input) {
     _classCallCheck(this, Game);
@@ -42,22 +46,21 @@ var Game = (function () {
 
     this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, { backgroundColor: 0x10ffffff });
 
+    this.debug_graphics = new PIXI.Graphics();
+
     // The renderer will create a canvas element for you that you can then insert into the DOM.
     document.body.appendChild(this.renderer.view);
   }
 
   _createClass(Game, [{
-    key: 'addEntity',
-    value: function addEntity(entity) {
-      this.entities.push(entity);
-      this.stage.addChild(entity.sprite);
+    key: 'enableDebug',
+    value: function enableDebug() {
+      this.stage.addChild(this.debug_graphics);
     }
   }, {
-    key: 'update',
-    value: function update() {
-      var _this = this;
-
-      var dt = (new Date() - this.now) / 1000.0;
+    key: 'drawDebug',
+    value: function drawDebug() {
+      this.debug_graphics.clear();
 
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
@@ -67,7 +70,15 @@ var Game = (function () {
         for (var _iterator = this.entities[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
           var entity = _step.value;
 
-          entity.update(dt);
+          if (entity == boxman) {
+            this.debug_graphics.beginFill(0x0002f0, .5);
+          } else {
+            this.debug_graphics.beginFill(0xff00ff, .5);
+          }
+
+          var r = entity.rect();
+
+          this.debug_graphics.drawRect(r.Min.x, r.Min.y, r.Max.x - r.Min.x, r.Max.y - r.Min.y);
         }
       } catch (err) {
         _didIteratorError = true;
@@ -83,27 +94,58 @@ var Game = (function () {
           }
         }
       }
-
-      this.now = new Date();
-
-      setTimeout(function () {
-        return _this.update();
-      }, 10);
+    }
+  }, {
+    key: 'addEntity',
+    value: function addEntity(entity) {
+      this.entities.push(entity);
+      this.stage.addChild(entity.sprite);
     }
   }, {
     key: 'render',
     value: function render() {
-      var _this2 = this;
+      var _this = this;
 
       requestAnimationFrame(function () {
-        return _this2.render();
+        return _this.render();
       });
       this.renderer.render(this.stage);
+
+      var dt = (new Date() - this.now) / 1000.0;
+
+      var _iteratorNormalCompletion2 = true;
+      var _didIteratorError2 = false;
+      var _iteratorError2 = undefined;
+
+      try {
+        for (var _iterator2 = this.entities[Symbol.iterator](), _step2; !(_iteratorNormalCompletion2 = (_step2 = _iterator2.next()).done); _iteratorNormalCompletion2 = true) {
+          var entity = _step2.value;
+
+          entity.collided = false;
+          entity.update(dt);
+        }
+      } catch (err) {
+        _didIteratorError2 = true;
+        _iteratorError2 = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion2 && _iterator2['return']) {
+            _iterator2['return']();
+          }
+        } finally {
+          if (_didIteratorError2) {
+            throw _iteratorError2;
+          }
+        }
+      }
+
+      this.now = new Date();
+
+      this.drawDebug();
     }
   }, {
     key: 'start',
     value: function start() {
-      this.update();
       this.render();
     }
   }]);
@@ -129,21 +171,30 @@ var Entity = (function () {
     this.min_scale = 1;
     this.scale = this.min_scale;
 
+    this._size = { width: 0, height: 0 };
     var size = this.size();
 
-    this.position = { x: size.width / 2, y: size.height / 2 };
+    this.position = { x: size.width / 2.0, y: size.height / 2.0 };
 
     this.accel_calc = {};
     this.drag_calc = {};
     this.delta_calc = {};
+
+    this.game = options.game;
   }
 
   _createClass(Entity, [{
     key: 'size',
     value: function size() {
-      this.size.width = 64 * this.scale;
-      this.size.height = 52 * this.scale;
-      return this.size;
+      this._size.width = 64 * this.scale;
+      this._size.height = 52 * this.scale;
+      return this._size;
+    }
+  }, {
+    key: 'rect',
+    value: function rect() {
+      return { Min: { x: this.position.x - this.size().width / 2.0, y: this.position.y - this.size().height / 2.0 },
+        Max: { x: this.position.x + this.size().width / 2.0, y: this.position.y + this.size().height / 2.0 } };
     }
   }, {
     key: 'update',
@@ -171,8 +222,9 @@ var Entity = (function () {
       delta.x = .5 * accel.x * dt * dt + this.velocity.x * dt;
       delta.y = .5 * accel.y * dt * dt + this.velocity.y * dt;
 
-      this.position.x = Math.round(this.position.x + delta.x);
-      this.position.y = Math.round(this.position.y + delta.y);
+      var new_position = {};
+      new_position.x = Math.round(this.position.x + delta.x);
+      new_position.y = Math.round(this.position.y + delta.y);
 
       this.velocity.x = Math.round(this.velocity.x + accel.x * dt);
       this.velocity.y = Math.round(this.velocity.y + accel.y * dt);
@@ -188,8 +240,49 @@ var Entity = (function () {
 
       var size = this.size();
 
-      this.sprite.position.x = this.position.x - size.width / 2;
-      this.sprite.position.y = this.position.y - size.height / 2;
+      var valid_move = true;
+
+      var me = this.rect();
+      var _iteratorNormalCompletion3 = true;
+      var _didIteratorError3 = false;
+      var _iteratorError3 = undefined;
+
+      try {
+        for (var _iterator3 = game.entities[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
+          var entity = _step3.value;
+
+          if (entity != this) {
+            var them = entity.rect();
+            if (RectanglesIntersect(me, them)) {
+              valid_move = false;
+            }
+          }
+        }
+      } catch (err) {
+        _didIteratorError3 = true;
+        _iteratorError3 = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion3 && _iterator3['return']) {
+            _iterator3['return']();
+          }
+        } finally {
+          if (_didIteratorError3) {
+            throw _iteratorError3;
+          }
+        }
+      }
+
+      if (valid_move && !this.collided) {
+        this.position.x = new_position.x;
+        this.position.y = new_position.y;
+      } else {
+        this.velocity.x = -this.velocity.x;
+        this.velocity.y = -this.velocity.y;
+      }
+
+      this.sprite.position.x = this.position.x - size.width / 2.0;
+      this.sprite.position.y = this.position.y - size.height / 2.0;
     }
   }]);
 
@@ -272,14 +365,14 @@ var Input = (function () {
   }, {
     key: 'addListeners',
     value: function addListeners() {
-      var _this3 = this;
+      var _this2 = this;
 
       // key events
       document.body.addEventListener("keydown", function (e) {
-        _this3.keys[_this3.getKey(e.keyCode)] = true;
+        _this2.keys[_this2.getKey(e.keyCode)] = true;
       });
       document.body.addEventListener("keyup", function (e) {
-        _this3.keys[_this3.getKey(e.keyCode)] = false;
+        _this2.keys[_this2.getKey(e.keyCode)] = false;
       });
     }
   }]);
@@ -291,17 +384,17 @@ var game = new Game();
 var input = new Input();
 input.addListeners();
 
-var boxman = new ControlledEntity({ sprite: 'boxman2', input: input });
-console.log(boxman);
-console.log(boxman.sprite);
+var boxman = new ControlledEntity({ sprite: 'boxman2', input: input, game: game });
 game.addEntity(boxman);
 
 for (var i = 0; i < 5; i++) {
-  var enemy = new Entity({ 'sprite': 'boxman2' });
+  var enemy = new Entity({ 'sprite': 'boxman2', game: game });
   enemy.position.x = Math.floor(Math.random() * game.screen_width);
   enemy.position.y = Math.floor(Math.random() * game.screen_height);
   game.addEntity(enemy);
 }
+
+game.enableDebug();
 
 // kick off the animation loop (defined below)
 game.start();

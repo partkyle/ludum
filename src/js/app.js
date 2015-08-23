@@ -3,6 +3,7 @@
 
 PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
 
+
 function Inner(a, b) {
   return a.x*b.x + a.y*b.y;
 }
@@ -19,6 +20,15 @@ function tmp() {
   let move_length = Length(delta)
 }
 
+function RectanglesIntersect(A, B) {
+    return !((B.Max.x < A.Min.x) ||
+                      (B.Min.x > A.Max.x) ||
+                      (B.Max.y < A.Min.y) ||
+                      (B.Min.y > A.Max.y) ||
+                      (B.Max.z < A.Min.z) ||
+                      (B.Min.z > A.Max.z));
+}
+
 class Game {
   constructor(input) {
     this.entities = [];
@@ -30,8 +40,31 @@ class Game {
   
     this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, {backgroundColor : 0x10ffffff});
 
+    this.debug_graphics = new PIXI.Graphics();
+
     // The renderer will create a canvas element for you that you can then insert into the DOM.
     document.body.appendChild(this.renderer.view);
+  }
+
+  enableDebug() {
+    this.stage.addChild(this.debug_graphics);
+  }
+
+  drawDebug() {
+    this.debug_graphics.clear()
+
+
+    for (let entity of this.entities) {
+      if (entity == boxman) {
+        this.debug_graphics.beginFill(0x0002f0, .5);
+      } else {
+        this.debug_graphics.beginFill(0xff00ff, .5);
+      }
+  
+      let r = entity.rect()
+
+      this.debug_graphics.drawRect(r.Min.x, r.Min.y, r.Max.x - r.Min.x, r.Max.y - r.Min.y);
+    }
   }
 
   addEntity(entity) {
@@ -39,25 +72,23 @@ class Game {
     this.stage.addChild(entity.sprite);
   }
 
-  update() {
+  render() {
+    requestAnimationFrame(() => this.render());
+    this.renderer.render(this.stage);
+
     let dt = ((new Date()) - this.now) / 1000.0;
 
     for (let entity of this.entities) {
+      entity.collided = false;
       entity.update(dt);
     }
 
     this.now = new Date();
 
-    setTimeout(() => this.update(), 10);
-  }
-
-  render() {
-    requestAnimationFrame(() => this.render());
-    this.renderer.render(this.stage);
+    this.drawDebug();
   }
 
   start() {
-    this.update();
     this.render();
   }
 }
@@ -78,20 +109,28 @@ class Entity {
     this.min_scale = 1;
     this.scale = this.min_scale;
 
+    this._size = {width: 0, height: 0};
     let size = this.size();
 
-    this.position = {x: size.width/2, y: size.height/2};
+    this.position = {x: size.width/2.0, y: size.height/2.0};
 
 
     this.accel_calc = {};
     this.drag_calc = {};
     this.delta_calc = {};
+
+    this.game = options.game;
   }
 
   size() {
-    this.size.width = 64 * this.scale;
-    this.size.height = 52 * this.scale;
-    return this.size;
+    this._size.width = 64 * this.scale;
+    this._size.height = 52 * this.scale;
+    return this._size;
+  }
+
+  rect() {
+    return {Min: {x: this.position.x - (this.size().width / 2.0), y: this.position.y - (this.size().height / 2.0)},
+            Max: {x: this.position.x + (this.size().width / 2.0), y: this.position.y + (this.size().height / 2.0)}}
   }
 
   update(dt) {
@@ -118,8 +157,9 @@ class Entity {
     delta.x = (.5 * accel.x * dt * dt) + (this.velocity.x * dt)
     delta.y = (.5 * accel.y * dt * dt) + (this.velocity.y * dt)
 
-    this.position.x = Math.round(this.position.x + delta.x);
-    this.position.y = Math.round(this.position.y + delta.y);
+    let new_position = {};
+    new_position.x = Math.round(this.position.x + delta.x);
+    new_position.y = Math.round(this.position.y + delta.y);
 
     this.velocity.x = Math.round(this.velocity.x + accel.x*dt);
     this.velocity.y = Math.round(this.velocity.y + accel.y*dt);
@@ -135,8 +175,28 @@ class Entity {
 
     let size = this.size();
 
-    this.sprite.position.x = this.position.x - size.width / 2;
-    this.sprite.position.y = this.position.y - size.height / 2;
+    let valid_move = true;
+
+    let me = this.rect();
+    for (let entity of game.entities) {
+      if (entity != this) {
+        let them = entity.rect();
+        if (RectanglesIntersect(me, them)) {
+          valid_move = false;
+        }
+      }
+    }
+
+    if (valid_move && !this.collided) {
+      this.position.x = new_position.x;
+      this.position.y = new_position.y;
+    } else {
+      this.velocity.x = -this.velocity.x;
+      this.velocity.y = -this.velocity.y;
+    }
+
+    this.sprite.position.x = this.position.x - size.width / 2.0;
+    this.sprite.position.y = this.position.y - size.height / 2.0;
   }
 }
 
@@ -215,17 +275,17 @@ let game = new Game();
 let input = new Input();
 input.addListeners();
 
-let boxman = new ControlledEntity({sprite: 'boxman2', input: input});
-console.log(boxman);
-console.log(boxman.sprite);
+let boxman = new ControlledEntity({sprite: 'boxman2', input: input, game: game  });
 game.addEntity(boxman);
 
 for (let i = 0; i < 5; i++) {
-  let enemy = new Entity({'sprite': 'boxman2'});
+  let enemy = new Entity({'sprite': 'boxman2', game: game});
   enemy.position.x = Math.floor(Math.random() * game.screen_width);
   enemy.position.y = Math.floor(Math.random() * game.screen_height);
   game.addEntity(enemy);
 }
+
+game.enableDebug();
 
 // kick off the animation loop (defined below)
 game.start();
