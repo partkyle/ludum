@@ -11,6 +11,24 @@ function _inherits(subClass, superClass) { if (typeof superClass !== 'function' 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
 
+PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
+
+function Inner(a, b) {
+  return a.x * b.x + a.y * b.y;
+}
+
+function LengthSq(vector) {
+  return Inner(vector, vector);
+}
+
+function Length(vector) {
+  Math.sqrt(LengthSq(vector));
+}
+
+function tmp() {
+  var move_length = Length(delta);
+}
+
 var Game = (function () {
   function Game(input) {
     _classCallCheck(this, Game);
@@ -19,10 +37,10 @@ var Game = (function () {
     this.stage = new PIXI.Container();
     this.now = new Date();
 
-    this.width = 800;
-    this.height = 600;
+    this.screen_width = 800;
+    this.screen_height = 600;
 
-    this.renderer = new PIXI.autoDetectRenderer(this.width, this.height, { backgroundColor: 0x10ffffff });
+    this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, { backgroundColor: 0x10ffffff });
 
     // The renderer will create a canvas element for you that you can then insert into the DOM.
     document.body.appendChild(this.renderer.view);
@@ -100,8 +118,6 @@ var Entity = (function () {
     this.texture = PIXI.Texture.fromImage('assets/' + options.sprite + '.png');
     this.sprite = new PIXI.Sprite(this.texture);
 
-    // this.sprite.position = options.position || {x: 0, y: 0}
-
     this.speed = 3000;
     this.drag = 5;
     this.velocity = { x: 0, y: 0 };
@@ -133,6 +149,13 @@ var Entity = (function () {
     key: 'update',
     value: function update(dt) {
       var accel = this.accel_calc;
+
+      var accel_length = LengthSq(accel);
+      if (accel_length > 1.0) {
+        accel.x *= 1.0 / Math.sqrt(accel_length);
+        accel.y *= 1.0 / Math.sqrt(accel_length);
+      }
+
       accel.x = this.accel.x * this.speed;
       accel.y = this.accel.y * this.speed;
 
@@ -275,8 +298,8 @@ game.addEntity(boxman);
 
 for (var i = 0; i < 5; i++) {
   var enemy = new Entity({ 'sprite': 'boxman2' });
-  enemy.position.x = Math.floor(Math.random() * game.width);
-  enemy.position.y = Math.floor(Math.random() * game.height);
+  enemy.position.x = Math.floor(Math.random() * game.screen_width);
+  enemy.position.y = Math.floor(Math.random() * game.screen_height);
   game.addEntity(enemy);
 }
 

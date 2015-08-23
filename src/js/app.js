@@ -1,16 +1,34 @@
 // You can use either `new PIXI.WebGLRenderer`, `new PIXI.CanvasRenderer`, or `PIXI.autoDetectRenderer`
 // which will try to choose the best renderer for the environment you are in.
 
+PIXI.SCALE_MODES.DEFAULT = PIXI.SCALE_MODES.NEAREST;
+
+function Inner(a, b) {
+  return a.x*b.x + a.y*b.y;
+}
+
+function LengthSq(vector) {
+  return Inner(vector, vector)
+}
+
+function Length(vector) {
+  Math.sqrt(LengthSq(vector))
+}
+
+function tmp() {
+  let move_length = Length(delta)
+}
+
 class Game {
   constructor(input) {
     this.entities = [];
     this.stage = new PIXI.Container();
     this.now = new Date();
 
-    this.width = 800;
-    this.height = 600;
+    this.screen_width = 800;
+    this.screen_height = 600;
   
-    this.renderer = new PIXI.autoDetectRenderer(this.width, this.height, {backgroundColor : 0x10ffffff});
+    this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, {backgroundColor : 0x10ffffff});
 
     // The renderer will create a canvas element for you that you can then insert into the DOM.
     document.body.appendChild(this.renderer.view);
@@ -49,9 +67,6 @@ class Entity {
     this.texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
     this.sprite = new PIXI.Sprite(this.texture);
 
-
-    // this.sprite.position = options.position || {x: 0, y: 0}
-
     this.speed = 3000;
     this.drag = 5;
     this.velocity = {x: 0, y: 0};
@@ -81,6 +96,13 @@ class Entity {
 
   update(dt) {
     let accel = this.accel_calc;
+
+    let accel_length = LengthSq(accel);
+    if (accel_length > 1.0) {
+      accel.x *= (1.0 / Math.sqrt(accel_length));
+      accel.y *= (1.0 / Math.sqrt(accel_length));
+    }
+
     accel.x = this.accel.x * this.speed;
     accel.y = this.accel.y * this.speed;
 
@@ -200,8 +222,8 @@ game.addEntity(boxman);
 
 for (let i = 0; i < 5; i++) {
   let enemy = new Entity({'sprite': 'boxman2'});
-  enemy.position.x = Math.floor(Math.random() * game.width);
-  enemy.position.y = Math.floor(Math.random() * game.height);
+  enemy.position.x = Math.floor(Math.random() * game.screen_width);
+  enemy.position.y = Math.floor(Math.random() * game.screen_height);
   game.addEntity(enemy);
 }
 

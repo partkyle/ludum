@@ -29,7 +29,7 @@ gulp.task('html', function() {
 });
 
 
-gulp.task('default', function() {
+gulp.task('default', ['js', 'html'], function() {
   gulp.watch('src/**/*.js', ['js']);
   gulp.watch('src/**/*.html', ['html']);
   connect.server({
