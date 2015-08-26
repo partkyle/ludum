@@ -35,8 +35,8 @@ class Game {
     this.stage = new PIXI.Container();
     this.now = new Date();
 
-    this.screen_width = 800;
-    this.screen_height = 600;
+    this.screen_width = 1200;
+    this.screen_height = 900;
   
     this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, {backgroundColor : 0x10ffffff});
 
@@ -69,7 +69,10 @@ class Game {
 
   addEntity(entity) {
     this.entities.push(entity);
-    this.stage.addChild(entity.sprite);
+
+    if (entity.sprite) {
+      this.stage.addChild(entity.sprite);
+    }
   }
 
   render() {
@@ -95,8 +98,10 @@ class Game {
 
 class Entity {
   constructor(options) {
-    this.texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
-    this.sprite = new PIXI.Sprite(this.texture);
+    if (options.sprite) {
+      this.texture = PIXI.Texture.fromImage('assets/'+options.sprite+'.png');
+      this.sprite = new PIXI.Sprite(this.texture);
+    }
 
     this.speed = 3000;
     this.drag = 5;
@@ -113,7 +118,6 @@ class Entity {
     let size = this.size();
 
     this.position = {x: size.width/2.0, y: size.height/2.0};
-
 
     this.accel_calc = {};
     this.drag_calc = {};
@@ -178,16 +182,46 @@ class Entity {
     let valid_move = true;
 
     let me = this.rect();
+
+    let found = false;
     for (let entity of game.entities) {
-      if (entity != this) {
+      if (entity == this) {
+        found = true;
+        continue;
+      }
+
+      if (found) {
         let them = entity.rect();
         if (RectanglesIntersect(me, them)) {
           valid_move = false;
+          entity.velocity.x = this.scale * this.velocity.x;
+          entity.velocity.y = this.scale * this.velocity.y;
+
+
+          if (this.velocity.x == 0 && this.velocity.y == 0 &&
+              entity.velocity.x == 0 && entity.velocity.y == 0) {
+            let left = 1;
+            let up = 1;
+
+            if (this.rect().Min.x <= entity.rect().Min.x) {
+              left = 1;
+            }
+
+            if (this.rect().Min.y <= entity.rect().Min.y) {
+              up = 1;
+            }
+
+            this.velocity.x = left * 1000;
+            this.velocity.y = up * 1000;
+            entity.velocity.x = -left * 1000;
+            entity.velocity.y = -up * 1000;
+          }
+
         }
       }
     }
 
-    if (valid_move && !this.collided) {
+    if (valid_move) {
       this.position.x = new_position.x;
       this.position.y = new_position.y;
     } else {
@@ -197,6 +231,26 @@ class Entity {
 
     this.sprite.position.x = this.position.x - size.width / 2.0;
     this.sprite.position.y = this.position.y - size.height / 2.0;
+
+    if (this.sprite.position.x < 0) {
+      this.velocity.x = - this.velocity.x;
+      this.sprite.position.x = 0
+    }
+
+    if (this.sprite.position.x > this.game.screen_width) {
+      this.velocity.x = - this.velocity.x;
+      this.sprite.position.x = this.game.screen_width - this.size().x;
+    }
+
+    if (this.sprite.position.y < 0) {
+      this.velocity.y = - this.velocity.y;
+      this.sprite.position.y = 0
+    }
+
+    if (this.sprite.position.y > this.game.screen_height) {
+      this.velocity.y = - this.velocity.y;
+      this.sprite.position.y = this.game.screen_height - this.size().y;
+    }
   }
 }
 
@@ -250,6 +304,8 @@ class Input {
         // 90: "ZOOM",
         // 70: "FOLLOW",
       };
+
+    this.addListeners();
   }
 
   getKey(code) {
@@ -271,17 +327,57 @@ class Input {
   }
 }
 
+class RandomInputs extends Input {
+  constructor(options) {
+    super(options);
+  }
+
+  rando() {
+    setTimeout(() => this.rando(), 1000)
+
+    if (Math.floor(Math.random() * 100) % 100) { 
+      for (let k in this.keys) {
+        this.keys[k] = false;
+      }
+    }
+
+    let move = Math.floor(Math.random() * 100)
+
+    if (move < 24) {
+      this.keys['LEFT'] = true;
+    } else if (move < 48) {
+      this.keys['RIGHT'] = true;
+    } else if (move < 72) {
+      this.keys['UP'] = true;
+    } else if (move < 96) {
+      this.keys['DOWN'] = true;
+    } else {
+      this.keys['SPACE'] = true;
+    }
+  }
+
+  addListeners() {
+    this.rando()
+  }
+}
+
+
 let game = new Game();
 let input = new Input();
-input.addListeners();
 
-let boxman = new ControlledEntity({sprite: 'boxman2', input: input, game: game  });
+// wall entities
+// let left_wall = new Entity
+
+let boxman = new ControlledEntity({sprite: 'boxman2', input: input, game: game});
+boxman.position.x = 200;
+boxman.position.y = 200;
 game.addEntity(boxman);
 
-for (let i = 0; i < 5; i++) {
-  let enemy = new Entity({'sprite': 'boxman2', game: game});
-  enemy.position.x = Math.floor(Math.random() * game.screen_width);
-  enemy.position.y = Math.floor(Math.random() * game.screen_height);
+for (let i = 0; i < 10; i++) {
+  let randomInputs = new RandomInputs();
+  let enemy = new ControlledEntity({'sprite': 'boxman2', game: game, input: randomInputs});
+  enemy.position.x = Math.floor(Math.random() * (game.screen_width-1)) + 1;
+  enemy.position.y = Math.floor(Math.random() * (game.screen_height-1)) + 1;
   game.addEntity(enemy);
 }
 

@@ -41,8 +41,8 @@ var Game = (function () {
     this.stage = new PIXI.Container();
     this.now = new Date();
 
-    this.screen_width = 800;
-    this.screen_height = 600;
+    this.screen_width = 1200;
+    this.screen_height = 900;
 
     this.renderer = new PIXI.autoDetectRenderer(this.screen_width, this.screen_height, { backgroundColor: 0x10ffffff });
 
@@ -99,7 +99,10 @@ var Game = (function () {
     key: 'addEntity',
     value: function addEntity(entity) {
       this.entities.push(entity);
-      this.stage.addChild(entity.sprite);
+
+      if (entity.sprite) {
+        this.stage.addChild(entity.sprite);
+      }
     }
   }, {
     key: 'render',
@@ -157,8 +160,10 @@ var Entity = (function () {
   function Entity(options) {
     _classCallCheck(this, Entity);
 
-    this.texture = PIXI.Texture.fromImage('assets/' + options.sprite + '.png');
-    this.sprite = new PIXI.Sprite(this.texture);
+    if (options.sprite) {
+      this.texture = PIXI.Texture.fromImage('assets/' + options.sprite + '.png');
+      this.sprite = new PIXI.Sprite(this.texture);
+    }
 
     this.speed = 3000;
     this.drag = 5;
@@ -243,6 +248,8 @@ var Entity = (function () {
       var valid_move = true;
 
       var me = this.rect();
+
+      var found = false;
       var _iteratorNormalCompletion3 = true;
       var _didIteratorError3 = false;
       var _iteratorError3 = undefined;
@@ -251,10 +258,35 @@ var Entity = (function () {
         for (var _iterator3 = game.entities[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
           var entity = _step3.value;
 
-          if (entity != this) {
+          if (entity == this) {
+            found = true;
+            continue;
+          }
+
+          if (found) {
             var them = entity.rect();
             if (RectanglesIntersect(me, them)) {
               valid_move = false;
+              entity.velocity.x = this.scale * this.velocity.x;
+              entity.velocity.y = this.scale * this.velocity.y;
+
+              if (this.velocity.x == 0 && this.velocity.y == 0 && entity.velocity.x == 0 && entity.velocity.y == 0) {
+                var left = 1;
+                var up = 1;
+
+                if (this.rect().Min.x <= entity.rect().Min.x) {
+                  left = 1;
+                }
+
+                if (this.rect().Min.y <= entity.rect().Min.y) {
+                  up = 1;
+                }
+
+                this.velocity.x = left * 1000;
+                this.velocity.y = up * 1000;
+                entity.velocity.x = -left * 1000;
+                entity.velocity.y = -up * 1000;
+              }
             }
           }
         }
@@ -273,7 +305,7 @@ var Entity = (function () {
         }
       }
 
-      if (valid_move && !this.collided) {
+      if (valid_move) {
         this.position.x = new_position.x;
         this.position.y = new_position.y;
       } else {
@@ -283,6 +315,26 @@ var Entity = (function () {
 
       this.sprite.position.x = this.position.x - size.width / 2.0;
       this.sprite.position.y = this.position.y - size.height / 2.0;
+
+      if (this.sprite.position.x < 0) {
+        this.velocity.x = -this.velocity.x;
+        this.sprite.position.x = 0;
+      }
+
+      if (this.sprite.position.x > this.game.screen_width) {
+        this.velocity.x = -this.velocity.x;
+        this.sprite.position.x = this.game.screen_width - this.size().x;
+      }
+
+      if (this.sprite.position.y < 0) {
+        this.velocity.y = -this.velocity.y;
+        this.sprite.position.y = 0;
+      }
+
+      if (this.sprite.position.y > this.game.screen_height) {
+        this.velocity.y = -this.velocity.y;
+        this.sprite.position.y = this.game.screen_height - this.size().y;
+      }
     }
   }]);
 
@@ -348,12 +400,14 @@ var Input = (function () {
       // 39: "CAMRIGHT",
       32: "SPACE"
     };
+
+    // 90: "ZOOM",
+    // 70: "FOLLOW",
+    this.addListeners();
   }
 
   _createClass(Input, [{
     key: 'getKey',
-    // 90: "ZOOM",
-    // 70: "FOLLOW",
     value: function getKey(code) {
       return this.key_config[code];
     }
@@ -380,17 +434,70 @@ var Input = (function () {
   return Input;
 })();
 
+var RandomInputs = (function (_Input) {
+  _inherits(RandomInputs, _Input);
+
+  function RandomInputs(options) {
+    _classCallCheck(this, RandomInputs);
+
+    _get(Object.getPrototypeOf(RandomInputs.prototype), 'constructor', this).call(this, options);
+  }
+
+  _createClass(RandomInputs, [{
+    key: 'rando',
+    value: function rando() {
+      var _this3 = this;
+
+      setTimeout(function () {
+        return _this3.rando();
+      }, 1000);
+
+      if (Math.floor(Math.random() * 100) % 100) {
+        for (var k in this.keys) {
+          this.keys[k] = false;
+        }
+      }
+
+      var move = Math.floor(Math.random() * 100);
+
+      if (move < 24) {
+        this.keys['LEFT'] = true;
+      } else if (move < 48) {
+        this.keys['RIGHT'] = true;
+      } else if (move < 72) {
+        this.keys['UP'] = true;
+      } else if (move < 96) {
+        this.keys['DOWN'] = true;
+      } else {
+        this.keys['SPACE'] = true;
+      }
+    }
+  }, {
+    key: 'addListeners',
+    value: function addListeners() {
+      this.rando();
+    }
+  }]);
+
+  return RandomInputs;
+})(Input);
+
 var game = new Game();
 var input = new Input();
-input.addListeners();
+
+// wall entities
+// let left_wall = new Entity
 
 var boxman = new ControlledEntity({ sprite: 'boxman2', input: input, game: game });
+boxman.position.x = 200;
+boxman.position.y = 200;
 game.addEntity(boxman);
 
-for (var i = 0; i < 5; i++) {
-  var enemy = new Entity({ 'sprite': 'boxman2', game: game });
-  enemy.position.x = Math.floor(Math.random() * game.screen_width);
-  enemy.position.y = Math.floor(Math.random() * game.screen_height);
+for (var i = 0; i < 10; i++) {
+  var randomInputs = new RandomInputs();
+  var enemy = new ControlledEntity({ 'sprite': 'boxman2', game: game, input: randomInputs });
+  enemy.position.x = Math.floor(Math.random() * (game.screen_width - 1)) + 1;
+  enemy.position.y = Math.floor(Math.random() * (game.screen_height - 1)) + 1;
   game.addEntity(enemy);
 }
 
